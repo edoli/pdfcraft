@@ -144,10 +144,12 @@ fn each_preference_hides_its_own_part() {
     let h = harness(|_| {}, &["/ViewerPreferences << /HideToolbar false /HideMenubar false /HideWindowUI false >>"]);
     assert_eq!(shown(&h), (true, true, true));
     let with_bar = top(&h);
+    let search_height = h.get_by_label("Find tools and commands").rect().height();
     // With both the tools and the menu hidden, the mode bar goes and the document moves up.
     let h = harness(|_| {}, &["/ViewerPreferences << /HideToolbar true /HideMenubar true >>"]);
     assert_eq!(shown(&h), (false, false, true));
-    assert!(top(&h) < with_bar - 40.0, "{} against {with_bar}", top(&h));
+    let reclaimed = with_bar - top(&h);
+    assert!(reclaimed >= search_height, "the document gained {reclaimed} pt, less than the {search_height} pt search control");
 }
 
 #[test]

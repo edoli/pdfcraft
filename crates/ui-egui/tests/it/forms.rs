@@ -35,13 +35,17 @@ fn value(h: &Harness<'static, PdfCraftApp>, name: &str) -> Vec<String> {
     s.session.get(s.views[0].id).unwrap().form.iter().find(|f| f.name == name).unwrap().value.clone()
 }
 
-/// Click the centre of a field's widget.
+/// Click the centre of the visible part of a field's widget.
 fn click_field(h: &mut Harness<'static, PdfCraftApp>, name: &str, widget: usize) {
     let p = {
         let s = h.state();
-        let doc = s.session.get(s.views[0].id).unwrap();
+        let view = &s.views[0];
+        let doc = s.session.get(view.id).unwrap();
         let f = doc.form.iter().find(|f| f.name == name).unwrap();
-        pdfcraft_ui_egui::forms_ui::field_screen_rect(&s.views[0], &doc.info, f, widget).expect("on screen").center()
+        let rect = pdfcraft_ui_egui::forms_ui::field_screen_rect(view, &doc.info, f, widget).expect("laid out");
+        let visible = rect.intersect(view.viewport_rect());
+        assert!(visible.is_positive(), "widget {widget} of field {name} must be visible to click");
+        visible.center()
     };
     click_at(h, p);
 }
