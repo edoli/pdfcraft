@@ -673,9 +673,14 @@ fn card_general(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens, ctx: &mut 
     }
 
     if app.window_controls.is_some() {
-        ctx.checkbox(ui, &mut app.system_title_bar, tl!("Use system title bar"), t).on_hover_text(tl!(
-            "Show a basic title bar for the window buttons instead of the tab strip. GNOME doesn't draw title bars for apps, so this one doesn't follow its theme."
-        ));
+        let tip = if cfg!(target_os = "windows") {
+            tl!("Show the Windows title bar above the document tabs.")
+        } else {
+            tl!(
+                "Show a basic title bar for the window buttons instead of the tab strip. GNOME doesn't draw title bars for apps, so this one doesn't follow its theme."
+            )
+        };
+        ctx.checkbox(ui, &mut app.system_title_bar, tl!("Use system title bar"), t).on_hover_text(tip);
     }
 }
 

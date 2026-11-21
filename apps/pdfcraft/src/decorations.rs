@@ -1,4 +1,4 @@
-//! Who draws the window frame on Linux.
+//! Who draws the window frame on Windows and Linux.
 //!
 //! Wayland compositors that draw frames for their clients offer `zxdg_decoration_manager_v1`
 //! (KDE, Sway, Hyprland, COSMIC). GNOME doesn't: it leaves the frame to the app, and winit then
@@ -6,6 +6,7 @@
 //! a header bar like GNOME's own apps (`pdfcraft_ui_egui::window_controls`), with the window
 //! buttons GNOME's `button-layout` names. X11 window managers always draw the frame.
 //!
+//! On Windows the app draws the frame by default, placing the window buttons next to the tabs.
 //! `PDFCRAFT_TITLEBAR=app` or `=system` overrides the choice.
 
 use pdfcraft_ui_egui::window_controls::Layout;
@@ -15,7 +16,7 @@ pub(crate) fn app_drawn() -> Option<Layout> {
     let drawn = match std::env::var("PDFCRAFT_TITLEBAR").ok().as_deref().map(str::trim) {
         Some("app") => true,
         Some("system") => false,
-        _ => compositor_leaves_frame_to_app(),
+        _ => cfg!(target_os = "windows") || compositor_leaves_frame_to_app(),
     };
     drawn.then(button_layout)
 }

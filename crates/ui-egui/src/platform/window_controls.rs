@@ -1,11 +1,12 @@
-//! Window buttons and resize edges for desktops that leave the window frame to the app.
+//! Window buttons and resize edges for the integrated title bar.
 //!
 //! GNOME on Wayland has no server-side decorations (the compositor offers no
 //! `zxdg_decoration_manager_v1`), so winit drew its own imitation frame. Instead the app turns the
 //! frame off and the tab strip becomes the header bar, as in GNOME's own apps: it carries the
 //! minimize, maximize and close buttons in the desktop's order (GNOME's `button-layout`), and
-//! thin zones along the window's edges resize it. Desktops with server-side decorations (KDE,
-//! Sway, Hyprland, X11) keep their own frame and never get here.
+//! thin zones along the window's edges resize it. Windows uses the same controls with all three
+//! buttons on the right. Linux desktops with server-side decorations (KDE, Sway, Hyprland, X11)
+//! keep their own frame by default.
 
 use crate::theme::Tokens;
 use egui::viewport::ResizeDirection;
