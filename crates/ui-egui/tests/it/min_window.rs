@@ -42,6 +42,17 @@ fn a_wide_window_keeps_the_mode_tabs() {
     }
 }
 
+#[test]
+fn the_mode_bar_controls_share_a_vertical_center() {
+    let h = harness(egui::vec2(1400.0, 900.0));
+    let menu = h.get_by_role_and_label(Role::MenuItem, "File").rect();
+    let mode = h.get_by_role_and_label(Role::Button, "All tools").rect();
+    let search = h.get_by_role_and_label(Role::Button, "Find tools and commands").rect();
+    for (label, rect) in [("File", menu), ("All tools", mode)] {
+        assert!((rect.center().y - search.center().y).abs() <= 1.0, "{label} and search are centered together: {rect:?} vs {search:?}");
+    }
+}
+
 fn fixture(n: usize) -> Vec<u8> {
     let mut objs: Vec<String> = vec!["<< /Type /Catalog /Pages 2 0 R >>".into()];
     let kids: Vec<String> = (0..n).map(|i| format!("{} 0 R", 4 + 2 * i)).collect();

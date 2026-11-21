@@ -699,9 +699,11 @@ fn tab(ui: &mut egui::Ui, spec: TabSpec<'_>, close: &mut Option<usize>) -> egui:
     theme::hand(resp).on_hover_text(if dirty { crate::i18n::fmt(tl!("{name} — unsaved changes"), &[("name", &shown)]) } else { shown })
 }
 
+const MODE_BAR_HEIGHT: f32 = 38.0;
+const MODE_BAR_CONTROL_HEIGHT: f32 = 32.0;
 /// Width the print, save and info buttons and their gaps take in the mode bar: three buttons, the
 /// 4 pt `item_spacing` after each of them (three gaps, not two), and the 8 pt spacer.
-const MODE_BAR_RIGHT: f32 = 3.0 * 32.0 + 3.0 * 4.0 + 8.0;
+const MODE_BAR_RIGHT: f32 = 3.0 * MODE_BAR_CONTROL_HEIGHT + 3.0 * 4.0 + 8.0;
 /// Narrowest search field the mode bar shows; below it the field becomes an icon button.
 const MODE_BAR_SEARCH_MIN: f32 = 140.0;
 
@@ -710,16 +712,17 @@ pub fn mode_bar(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     // The document in the active tab may hide the menu or the tools (`crate::viewer_prefs`).
     let hidden = app.hidden_interface();
     egui::Panel::top("mode_bar")
-        .exact_size(48.0)
+        .exact_size(MODE_BAR_HEIGHT)
         .frame(egui::Frame::NONE.fill(t.chrome).inner_margin(egui::Margin::symmetric(10, 0)).stroke(Stroke::new(1.0, t.divider)))
         .show(ui, |ui| {
             ui.horizontal_centered(|ui| {
+                let row = ui.max_rect();
                 ui.spacing_mut().item_spacing.x = 2.0;
                 // The menus, unless the native macOS menu bar has them or the document hides them.
                 if app.native_menu.is_none() && !hidden.menubar {
-                    app.menu_bar_ui(ui);
+                    app.menu_bar_ui(ui, MODE_BAR_CONTROL_HEIGHT);
                     ui.add_space(6.0);
-                    ui.painter().vline(ui.cursor().left(), ui.max_rect().y_range().shrink(12.0), Stroke::new(1.0, t.divider));
+                    ui.painter().vline(ui.cursor().left(), row.y_range().shrink(8.0), Stroke::new(1.0, t.divider));
                     ui.add_space(10.0);
                 }
                 if hidden.toolbar {
@@ -734,7 +737,7 @@ pub fn mode_bar(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                 let inline_tabs = avail >= tabs_w + MODE_BAR_RIGHT + MODE_BAR_SEARCH_MIN;
                 if inline_tabs {
                     for (mode, label) in modes {
-                        if widgets::mode_tab(ui, tl!(label), app.mode == mode).clicked() {
+                        if widgets::mode_tab_sized(ui, tl!(label), app.mode == mode, row.height()).clicked() {
                             app.switch_mode(mode, true);
                         }
                     }
@@ -764,7 +767,7 @@ pub fn mode_bar(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                         let tip = crate::commands::command_tip(ui.ctx(), tl!("Print ({key})"), "print.dialog");
                         // A document that forbids printing says so here, before the dialog (#2669).
                         let may_print = !has_doc || pdfcraft_engine::commands::command("print.dialog").is_some_and(|c| app.command_enabled(c));
-                        let mut print = ui.add_enabled_ui(may_print, |ui| icons::button(ui, "printer", 32.0, false, &tip)).inner;
+                        let mut print = ui.add_enabled_ui(may_print, |ui| icons::button(ui, "printer", MODE_BAR_CONTROL_HEIGHT, false, &tip)).inner;
                         if !may_print {
                             print = print.on_disabled_hover_text(crate::print_refused());
                         }
@@ -772,11 +775,11 @@ pub fn mode_bar(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                             app.run_command("print.dialog");
                         }
                         let tip = crate::commands::command_tip(ui.ctx(), tl!("Save ({key})"), "file.save");
-                        if icons::button(ui, "save", 32.0, false, &tip).clicked() {
+                        if icons::button(ui, "save", MODE_BAR_CONTROL_HEIGHT, false, &tip).clicked() {
                             app.run_command("file.save");
                         }
                         let tip = crate::commands::command_tip(ui.ctx(), tl!("Document properties ({key})"), "file.properties");
-                        if icons::button(ui, "info", 32.0, false, &tip).clicked() {
+                        if icons::button(ui, "info", MODE_BAR_CONTROL_HEIGHT, false, &tip).clicked() {
                             app.dialog = Some(Dialog::Properties(PropsTab::Description));
                         }
                     });
@@ -786,7 +789,7 @@ pub fn mode_bar(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                         widgets::search_box(ui, tl!("Find tools and commands"), search_w).clicked()
                     } else {
                         // Too narrow for the field: a button opens the same command search.
-                        icons::button(ui, "search", 32.0, false, tl!("Find tools and commands")).clicked()
+                        icons::button(ui, "search", MODE_BAR_CONTROL_HEIGHT, false, tl!("Find tools and commands")).clicked()
                     };
                     if opened {
                         app.palette_open = true;

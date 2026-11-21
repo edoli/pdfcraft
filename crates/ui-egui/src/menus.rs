@@ -596,20 +596,29 @@ impl PdfCraftApp {
 
     /// The menu bar drawn in the window (Windows, Linux, the web, and macOS when the native one
     /// couldn't be installed), where the top bar starts. Runs the commands chosen.
-    pub(crate) fn menu_bar_ui(&mut self, ui: &mut egui::Ui) {
+    pub(crate) fn menu_bar_ui(&mut self, ui: &mut egui::Ui, title_height: f32) {
         let ctx = ui.ctx().clone();
         let bar = craft_menu::layout(&self.menu_bar(&ctx), Target::current(), &layout_options()).bar;
         let gate = self.menu_gate(&ctx);
         // The mode tabs, search and buttons follow the bar in the same row: it takes its titles'
         // width, less when the row is short, where the menus that don't fit move into its "⋯".
         let fit = (ui.available_width() - ROW_AFTER_MENUS).max(MIN_MENUS_WIDTH);
-        let chosen = craft_menu::MenuBarUi::new(&bar)
-            .gate(gate)
-            .label(&translate)
-            .english(&english)
-            .id(egui::Id::unique("pdfcraft-menu-bar"))
-            .shrink_to_fit(fit)
-            .show(ui);
+        let chosen = ui
+            .scope(|ui| {
+                // Keep the popup width based on the theme's interaction height. The padded menu
+                // titles need a taller inner row to line up with the surrounding controls.
+                let style = craft_menu::BarStyle::from_style(ui.style());
+                ui.spacing_mut().interact_size.y = title_height;
+                craft_menu::MenuBarUi::new(&bar)
+                    .gate(gate)
+                    .label(&translate)
+                    .english(&english)
+                    .id(egui::Id::unique("pdfcraft-menu-bar"))
+                    .shrink_to_fit(fit)
+                    .style(style)
+                    .show(ui)
+            })
+            .inner;
         for command in chosen {
             self.run_menu_command(&ctx, &command);
         }

@@ -184,14 +184,18 @@ pub(crate) fn paint_left(ui: &egui::Ui, pos: egui::Pos2, text: &str, font: egui:
 
 /// A mode-bar tab: text with an underline when active.
 pub fn mode_tab(ui: &mut egui::Ui, label: &str, active: bool) -> Response {
+    mode_tab_sized(ui, label, active, 48.0)
+}
+
+pub(crate) fn mode_tab_sized(ui: &mut egui::Ui, label: &str, active: bool, height: f32) -> Response {
     let t = Tokens::get(ui.ctx());
     let font = if active { theme::semibold(13.5) } else { theme::medium(13.5) };
     let w = ui.fonts_mut(|f| f.layout_no_wrap(label.to_owned(), font.clone(), t.text).size().x);
     // Keep in step with `mode_tab_width`.
-    let (rect, resp) = ui.allocate_exact_size(vec2(w + 22.0, 48.0), Sense::click());
+    let (rect, resp) = ui.allocate_exact_size(vec2(w + 22.0, height), Sense::click());
     resp.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, ui.is_enabled(), active, label));
     let press = theme::Press::track(ui, &resp);
-    let well = rect.shrink2(vec2(2.0, 9.0));
+    let well = rect.shrink2(vec2(2.0, ((height - 30.0) / 2.0).max(0.0)));
     if active {
         if press.down > 0.01 {
             ui.painter().rect_filled(well, CornerRadius::same(6), t.pressed.gamma_multiply(press.down));
