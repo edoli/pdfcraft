@@ -49,6 +49,9 @@ mod text_scale;
 #[cfg(test)]
 #[path = "windows_manifest.rs"]
 mod windows_manifest;
+#[cfg(target_os = "windows")]
+#[allow(unsafe_code)]
+mod windows_title_bar;
 
 /// Freedesktop app id: the `.desktop` file name and the hicolor icon name.
 const APP_ID: &str = "ai.storyteller.pdfcraft";
@@ -247,7 +250,7 @@ fn main() -> eframe::Result {
     let may_hand_off = startup.may_hand_off();
     let startup::Arguments { files, options, control_file, create_images, combine, two_paged, .. } = startup;
     let integrated = cfg!(target_os = "macos");
-    let window_controls = if integrated { None } else { decorations::app_drawn() };
+    let window_controls = if integrated || cfg!(target_os = "windows") { None } else { decorations::app_drawn() };
     migrate_legacy_folders();
     // The log file stays in the data folder; opened after the arguments (so `--version` leaves
     // no file behind) and after the PrintCraft migration (which a fresh folder would block).
@@ -549,6 +552,13 @@ fn app_creator<'a>(
             if let Err(e) = result {
                 log::warn!("--{k} {v}: {e}");
             }
+        }
+        #[cfg(target_os = "windows")]
+        if std::env::var("PDFCRAFT_TITLEBAR").is_ok_and(|value| value.trim() == "system") {
+            log::debug!("Using the standard Windows title bar");
+        } else if let Err(error) = windows_title_bar::attach(cc, !app.system_title_bar) {
+            log::warn!("Could not integrate the Windows title bar: {error}");
+            app.notify_tr("The integrated title bar is unavailable. PdfCraft is using the system title bar.");
         }
         Ok(Box::new(app))
     })

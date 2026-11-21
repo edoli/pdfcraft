@@ -4,13 +4,49 @@
 //! `zxdg_decoration_manager_v1`), so winit drew its own imitation frame. Instead the app turns the
 //! frame off and the tab strip becomes the header bar, as in GNOME's own apps: it carries the
 //! minimize, maximize and close buttons in the desktop's order (GNOME's `button-layout`), and
-//! thin zones along the window's edges resize it. Windows uses the same controls with all three
-//! buttons on the right. Linux desktops with server-side decorations (KDE, Sway, Hyprland, X11)
+//! thin zones along the window's edges resize it. Linux desktops with server-side decorations (KDE, Sway, Hyprland, X11)
 //! keep their own frame by default.
 
 use crate::theme::Tokens;
 use egui::viewport::ResizeDirection;
 use egui::{Align2, Color32, CursorIcon, Pos2, Rect, Sense, Stroke, Vec2};
+
+/// Logical space occupied by the Windows caption buttons in the client area.
+#[derive(Clone, Copy)]
+pub struct NativeTitleBar {
+    pub integrated: bool,
+    pub left: f32,
+    pub right: f32,
+    pub height: f32,
+}
+
+impl NativeTitleBar {
+    pub fn get(ctx: &egui::Context) -> Option<Self> {
+        ctx.data(|data| data.get_temp(egui::Id::unique("native_title_bar")))
+    }
+
+    pub fn publish(self, ctx: &egui::Context) {
+        ctx.data_mut(|data| data.insert_temp(egui::Id::unique("native_title_bar"), self));
+    }
+}
+
+/// What the tab strip delegates to the native caption on this frame.
+#[derive(Clone, Copy)]
+pub struct NativeTitleBarLayout {
+    pub system_title_bar: bool,
+    pub drag: Option<Rect>,
+    pub layer: Option<egui::LayerId>,
+}
+
+impl NativeTitleBarLayout {
+    pub fn get(ctx: &egui::Context) -> Option<Self> {
+        ctx.data(|data| data.get_temp(egui::Id::unique("native_title_bar_layout")))
+    }
+
+    pub fn publish(self, ctx: &egui::Context) {
+        ctx.data_mut(|data| data.insert_temp(egui::Id::unique("native_title_bar_layout"), self));
+    }
+}
 
 /// A window button.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

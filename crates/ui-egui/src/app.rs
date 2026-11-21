@@ -850,6 +850,9 @@ impl PdfCraftApp {
         // The accessible window takes the same name, so a screen reader (AT-SPI on Linux, UIA on
         // Windows) can tell it apart (#4614). egui builds the root node afresh every pass.
         ctx.accesskit_node_builder(egui::accesskit_root_id(), |root| root.set_label(self.window_title.as_str()));
+        if window_controls::NativeTitleBar::get(&ctx).is_some() {
+            window_controls::NativeTitleBarLayout { system_title_bar: self.system_title_bar, drag: None, layer: None }.publish(&ctx);
+        }
         if self.full_screen && self.active.is_some() {
             // Full screen: the page on black, nothing else, as Acrobat's Full Screen Mode (Esc
             // or ⌘L to leave).

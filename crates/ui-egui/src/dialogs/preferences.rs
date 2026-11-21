@@ -672,7 +672,7 @@ fn card_general(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens, ctx: &mut 
         ctx.label_secondary(ui, tl!("Lowering this forgets the oldest files. At 0 there is no list."), t);
     }
 
-    if app.window_controls.is_some() {
+    if app.window_controls.is_some() || crate::window_controls::NativeTitleBar::get(ui.ctx()).is_some() {
         let tip = if cfg!(target_os = "windows") {
             tl!("Show the Windows title bar above the document tabs.")
         } else {

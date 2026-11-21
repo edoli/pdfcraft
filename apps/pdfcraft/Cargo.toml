@@ -5,8 +5,16 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
-[lints]
-workspace = true
+# The Windows title-bar adapter is this crate's only exception.
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+cognitive_complexity = "deny"
+too_many_arguments = "deny"
+wildcard_imports = "deny"
+dbg_macro = "warn"
+todo = "warn"
 
 [dependencies]
 # Help ▸ Check for updates (issue #28): one HTTPS request to GitHub, over rustls with the OS's
@@ -60,6 +68,9 @@ winsafe = { version = "0.0.29", default-features = false, features = ["user", "a
 # `UISettings`, whose bindings are safe to call (winsafe's `SystemParametersInfo` is an unsafe
 # fn). Already in the tree through wgpu's DX12 backend; this adds one small namespace to it.
 windows = { version = "0.62", default-features = false, features = ["std", "UI_ViewManagement"] }
+windows-core = "0.62.2"
+raw-window-handle = "0.6"
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_LibraryLoader", "Win32_System_Memory"] }
 # Single instance (#282): later launches hand their files to the running app over a Unix domain
 # socket. `std` has no Unix sockets on Windows, and calling Winsock directly needs unsafe, which
 # our workspace forbids. Already in the lockfile through zbus; pinned exactly, review before bumping.

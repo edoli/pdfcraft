@@ -72,20 +72,24 @@ pub fn tab_strip(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     } else {
         (Layout::left_to_right(Align::Center), Layout::right_to_left(Align::Center))
     };
+    let native = window_controls::NativeTitleBar::get(ui.ctx()).filter(|bar| bar.integrated);
+    let strip_height = if mac { MAC_TITLE_BAR } else { native.map_or(TAB_STRIP, |bar| TAB_STRIP.max(bar.height)) };
     let (tab_h, button) = if mac { (MAC_TITLE_BAR - 2.0, 24.0) } else { (TAB_HEIGHT, STRIP_BUTTON) };
     egui::Panel::top("tab_strip")
-        .exact_size(if mac { MAC_TITLE_BAR } else { TAB_STRIP })
+        .exact_size(strip_height)
         .frame(egui::Frame::NONE.fill(t.titlebar).inner_margin(egui::Margin { left, right, top: 0, bottom: 0 }))
         .show(ui, |ui| {
             let full = ui.max_rect();
             app.panes.main_strip = Some(full);
-            let drag = ui.interact(full, ui.scope_id().with("titledrag"), Sense::click_and_drag());
-            if drag.drag_started() {
-                window_controls::desktop_grab(ui.ctx(), egui::ViewportCommand::StartDrag);
-            }
-            if drag.double_clicked() {
-                let max = ui.ctx().input(|i| i.viewport().maximized.unwrap_or(false));
-                ui.ctx().send_viewport_cmd(egui::ViewportCommand::Maximized(!max));
+            if native.is_none() {
+                let drag = ui.interact(full, ui.scope_id().with("titledrag"), Sense::click_and_drag());
+                if drag.drag_started() {
+                    window_controls::desktop_grab(ui.ctx(), egui::ViewportCommand::StartDrag);
+                }
+                if drag.double_clicked() {
+                    let max = ui.ctx().input(|i| i.viewport().maximized.unwrap_or(false));
+                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::Maximized(!max));
+                }
             }
             // When the app draws the frame, the strip is the title bar with window buttons.
             let fullscreen = ui.ctx().input(|i| i.viewport().fullscreen.unwrap_or(false));
@@ -94,7 +98,7 @@ pub fn tab_strip(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                 .clone()
                 .filter(|_| app.draws_window_frame() && !fullscreen)
                 .unwrap_or_else(|| window_controls::Layout { left: Vec::new(), right: Vec::new() });
-            ui.allocate_ui_with_layout(ui.available_size_before_wrap(), row, |ui| {
+            let contents = |ui: &mut egui::Ui| {
                 ui.spacing_mut().item_spacing.x = 4.0;
                 if !controls.left.is_empty() {
                     ui.scope(|ui| {
@@ -110,7 +114,7 @@ pub fn tab_strip(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                 // Keep Preferences and window buttons outside the scrolling tab list.
                 let controls_width = button + 4.0 + window_controls::width(&controls.right)
                     // Leave space to drag the window even when the document tabs overflow.
-                    + if app.draws_window_frame() && !fullscreen { button } else { 0.0 };
+                    + if (app.draws_window_frame() || native.is_some()) && !fullscreen { button } else { 0.0 };
                 // Open stays in sight after the tabs: its icon, text and padding, and the gaps around it.
                 let open_width = ui.fonts_mut(|f| f.layout_no_wrap(tl!("Open").into(), theme::medium(13.0), t.text).size().x) + 38.0 + 12.0;
                 let mut tabs_width = (ui.available_width() - controls_width - open_width).max(0.0);
@@ -288,25 +292,45 @@ pub fn tab_strip(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                 }
                 ui.add_space(4.0);
                 let tip = crate::commands::command_tip(ui.ctx(), tl!("Open a PDF ({key})"), "file.open");
-                if widgets::ghost_button_sized(ui, "plus", tl!("Open"), tab_h).on_hover_text(tip).clicked() {
+                let open = widgets::ghost_button_sized(ui, "plus", tl!("Open"), tab_h).on_hover_text(tip);
+                if open.clicked() {
                     app.open_dialog();
                 }
-                ui.with_layout(far_end, |ui| {
-                    if !controls.right.is_empty() {
-                        // Laid out left to right inside the right-to-left run, so they read in
-                        // the desktop's order.
-                        let size = egui::vec2(window_controls::width(&controls.right) - window_controls::SIDE_GAP, window_controls::BUTTON);
-                        ui.allocate_ui_with_layout(size, Layout::left_to_right(Align::Center), |ui| {
-                            ui.spacing_mut().item_spacing.x = 0.0;
-                            window_controls::buttons(ui, &controls.right);
-                        });
-                        ui.add_space(window_controls::SIDE_GAP - 4.0);
-                    }
-                    if icons::button(ui, "settings", button, false, tl!("Preferences")).clicked() {
-                        app.execute("app.preferences");
-                    }
-                });
-            });
+                let preferences = ui
+                    .with_layout(far_end, |ui| {
+                        if !controls.right.is_empty() {
+                            // Laid out left to right inside the right-to-left run, so they read in
+                            // the desktop's order.
+                            let size = egui::vec2(window_controls::width(&controls.right) - window_controls::SIDE_GAP, window_controls::BUTTON);
+                            ui.allocate_ui_with_layout(size, Layout::left_to_right(Align::Center), |ui| {
+                                ui.spacing_mut().item_spacing.x = 0.0;
+                                window_controls::buttons(ui, &controls.right);
+                            });
+                            ui.add_space(window_controls::SIDE_GAP - 4.0);
+                        }
+                        let response = icons::button(ui, "settings", button, false, tl!("Preferences"));
+                        if response.clicked() {
+                            app.execute("app.preferences");
+                        }
+                        response.rect
+                    })
+                    .inner;
+                if native.is_some() && open.rect.right() < preferences.left() {
+                    let drag = Rect::from_x_y_ranges(open.rect.right()..=preferences.left(), full.y_range());
+                    window_controls::NativeTitleBarLayout { system_title_bar: app.system_title_bar, drag: Some(drag), layer: Some(ui.layer_id()) }
+                        .publish(ui.ctx());
+                }
+            };
+            if let Some(bar) = native {
+                // Reserve the native buttons horizontally. The tabs still fill the strip down
+                // to the mode bar, and the app's tools are centered in the same row.
+                let mut rect = ui.available_rect_before_wrap();
+                rect.min.x += bar.left;
+                rect.max.x = (rect.max.x - bar.right).max(rect.min.x);
+                ui.scope_builder(egui::UiBuilder::new().max_rect(rect).layout(row), contents);
+            } else {
+                ui.allocate_ui_with_layout(ui.available_size_before_wrap(), row, contents);
+            }
         });
 }
 
