@@ -6,7 +6,7 @@ use egui::{Align, Color32, CornerRadius, Layout, Rect, Sense, Stroke, vec2};
 use crate::canvas::{DocView, Fit, PageLayout};
 use crate::panes::{Place, TabDrop};
 use crate::tab_context::Action;
-use crate::theme::{self, ThemePreference, Tokens};
+use crate::theme::{self, Tokens};
 use crate::{Dialog, Mode, PdfCraftApp, PropsTab, RightPanel, icons, widgets, window_controls};
 
 /// Height of the tab strip when it doubles as the macOS title bar (#789). AppKit draws the traffic
@@ -60,8 +60,7 @@ pub fn tab_strip(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
         app.titlebar_lights_right = mac_lights_on_right();
     }
     // With the lights at the right (a right-to-left system language), the strip is the mirror
-    // image of the usual one: Home beside the lights, the tabs and Open after it, and the
-    // Discord, shortcuts and theme buttons at the far end.
+    // image of the usual one: Home beside the lights, then tabs and Open, with Preferences at the far end.
     let mirrored = mac && app.titlebar_lights_right == Some(true);
     let (left, right) = match (mac, mirrored) {
         (true, false) => (MAC_CONTENT_LEFT as i8, 10),
@@ -108,11 +107,8 @@ pub fn tab_strip(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                     app.active = None;
                     app.combine_tab.focused = false;
                 }
-                // Reserve the three icon buttons, Discord and their gaps outside the scrolling tabs.
-                let controls_width = ui.fonts_mut(|f| f.layout_no_wrap("Discord".into(), theme::medium(13.0), t.text).size().x)
-                    + 3.0 * button
-                    + 54.0
-                    + window_controls::width(&controls.right)
+                // Keep Preferences and window buttons outside the scrolling tab list.
+                let controls_width = button + 4.0 + window_controls::width(&controls.right)
                     // Leave space to drag the window even when the document tabs overflow.
                     + if app.draws_window_frame() && !fullscreen { button } else { 0.0 };
                 // Open stays in sight after the tabs: its icon, text and padding, and the gaps around it.
@@ -309,29 +305,6 @@ pub fn tab_strip(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                     if icons::button(ui, "settings", button, false, tl!("Preferences")).clicked() {
                         app.execute("app.preferences");
                     }
-                    let (icon, label) = match app.theme_preference {
-                        ThemePreference::System => ("monitor", tl!("Use system setting")),
-                        ThemePreference::Light => ("sun", tl!("Light gray")),
-                        ThemePreference::Dark => ("moon", tl!("Dark gray")),
-                    };
-                    let tip = format!("{}: {label}", tl!("Display theme"));
-                    let response = icons::button(ui, icon, button, false, &tip);
-                    // A click cycles System, Light, Dark; a right-click opens the menu.
-                    if response.clicked() {
-                        app.execute(match app.theme_preference {
-                            ThemePreference::System => "view.theme.light",
-                            ThemePreference::Light => "view.theme.dark",
-                            ThemePreference::Dark => "view.theme.system",
-                        });
-                    }
-                    egui::Popup::context_menu(&response).id(response.id.with("theme_menu")).show(|ui| appearance_menu(app, ui));
-                    if icons::button(ui, "circle-help", button, false, tl!("Keyboard shortcuts")).clicked() {
-                        app.dialog = Some(Dialog::Shortcuts);
-                    }
-                    // One click to the community, from anywhere in the app.
-                    if widgets::ghost_button_sized(ui, "messages-square", "Discord", tab_h).on_hover_text(pdfcraft_engine::links::DISCORD).clicked() {
-                        app.execute("help.discord");
-                    }
                 });
             });
         });
@@ -370,14 +343,6 @@ fn combine_tab(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, cap: Option
     // A middle click closes it too, as it does a document tab (#1853).
     if close.is_some() || response.middle_clicked() {
         app.close_combine_tab();
-    }
-}
-
-/// The right-click menu on the title bar's theme button.
-fn appearance_menu(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
-    if ui.button(tl!("Appearance settings…")).clicked() {
-        app.dialog = Some(Dialog::Preferences);
-        ui.close();
     }
 }
 

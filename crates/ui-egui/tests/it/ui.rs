@@ -662,7 +662,7 @@ fn overflowing_tabs_can_be_reached_by_scrolling() {
     h.get_by_label("document-19.pdf").click();
     h.run_steps(3);
     assert_eq!(h.state().active, Some(19));
-    assert!(h.get_by_label_contains("Display theme:").rect().center().x < 1400.0);
+    assert!(h.get_by_label("Preferences").rect().center().x < 1400.0);
     let close = last.right_center() - egui::vec2(16.0, 0.0);
     h.event(egui::Event::PointerMoved(close));
     h.event(egui::Event::PointerButton { pos: close, button: egui::PointerButton::Primary, pressed: true, modifiers: egui::Modifiers::NONE });
@@ -695,8 +695,8 @@ fn tabs_shrink_to_fit_then_arrows_step_through_them_and_open_stays_in_sight() {
         }
     });
     let open = h.get_by_label("Open").rect();
-    let discord = h.get_by_label("Discord").rect();
-    assert!(open.right() <= discord.left(), "Open {open:?} must not run under Discord {discord:?}");
+    let preferences = h.get_by_label("Preferences").rect();
+    assert!(open.right() <= preferences.left(), "Open {open:?} must not run under Preferences {preferences:?}");
     let mut previous_right = f32::MIN;
     for i in 0..5 {
         let tab = h.get_by_label(&name(i)).rect();
@@ -720,15 +720,15 @@ fn tabs_shrink_to_fit_then_arrows_step_through_them_and_open_stays_in_sight() {
     assert_eq!(enabled(&h, "Scroll tabs right"), Some(true), "and then there is more to the right");
     let open = h.get_by_label("Open").rect();
     let right = h.get_by_label("Scroll tabs right").rect();
-    assert!(right.right() <= open.left() + 0.5 && open.right() <= h.get_by_label("Discord").rect().left());
-    // Twenty: Open stays in sight left of Discord.
+    assert!(right.right() <= open.left() + 0.5 && open.right() <= h.get_by_label("Preferences").rect().left());
+    // Twenty: Open stays in sight left of Preferences.
     for i in 0..13 {
         h.state_mut().open_bytes(&format!("more-{i:02}.pdf"), None, FIXTURE.to_vec()).unwrap();
     }
     h.run_steps(4);
     let open = h.get_by_label("Open").rect();
-    let discord = h.get_by_label("Discord").rect();
-    assert!(open.left() > 0.0 && open.right() <= discord.left(), "Open {open:?} stays in sight left of Discord {discord:?}");
+    let preferences = h.get_by_label("Preferences").rect();
+    assert!(open.left() > 0.0 && open.right() <= preferences.left(), "Open {open:?} stays in sight left of Preferences {preferences:?}");
 }
 
 /// macOS (#789): with the integrated title bar, the strip is the 28 pt band AppKit centres the
@@ -741,7 +741,7 @@ fn the_integrated_title_bar_is_the_traffic_light_band() {
         app.open_bytes("band.pdf", None, FIXTURE.to_vec()).unwrap();
     });
     let band = 28.0;
-    for label in ["Home", "band.pdf", "Open", "Discord", "Keyboard shortcuts"] {
+    for label in ["Home", "band.pdf", "Open", "Preferences"] {
         let r = h.get_by_label(label).rect();
         assert!(r.top() >= 0.0 && r.bottom() <= band, "{label}: {r:?} inside the {band} pt title bar");
         assert!(r.height() >= 24.0, "{label}: {r:?} stays clickable");
@@ -753,8 +753,7 @@ fn the_integrated_title_bar_is_the_traffic_light_band() {
 
 /// macOS with a right-to-left system language: AppKit mirrors the traffic lights to the right end
 /// of the title bar, and the strip mirrors with them. Home sits beside the lights, the tabs read
-/// from the right after it, then Open; Discord, shortcuts, theme and Preferences move to the far
-/// left end.
+/// from the right after it, then Open. Preferences moves to the far left.
 #[cfg(target_os = "macos")]
 fn mirrored_title_bar(names: &[&'static str]) -> Harness<'static, PdfCraftApp> {
     let names = names.to_vec();
@@ -773,15 +772,7 @@ fn the_integrated_title_bar_mirrors_with_traffic_lights_at_the_right() {
     let (width, band, lights) = (1400.0, 28.0, 62.0);
     let h = mirrored_title_bar(&["first.pdf", "last.pdf"]);
     let rect = |label: &str| h.get_by_label(label).rect();
-    let theme = h.get_by_label_contains("Display theme:").rect();
-    for (label, r) in [
-        ("Home", rect("Home")),
-        ("first.pdf", rect("first.pdf")),
-        ("Open", rect("Open")),
-        ("Discord", rect("Discord")),
-        ("Display theme", theme),
-        ("Preferences", rect("Preferences")),
-    ] {
+    for (label, r) in [("Home", rect("Home")), ("first.pdf", rect("first.pdf")), ("Open", rect("Open")), ("Preferences", rect("Preferences"))] {
         assert!(r.top() >= 0.0 && r.bottom() <= band, "{label}: {r:?} inside the {band} pt title bar");
         assert!(r.right() <= width - lights - 4.0, "{label}: {r:?} clears the traffic lights");
     }
@@ -793,14 +784,9 @@ fn the_integrated_title_bar_mirrors_with_traffic_lights_at_the_right() {
     assert!(rect("last.pdf").right() <= rect("first.pdf").left(), "the tabs read from the right");
     assert!(rect("first.pdf").right() >= home.left() - 12.0, "the tabs stay beside Home");
     assert!(rect("Open").right() <= rect("last.pdf").left(), "Open follows the tabs");
-    // The other end: Preferences, theme, shortcuts and Discord, mirroring their order at the right.
-    let (preferences, help, discord) = (rect("Preferences"), rect("Keyboard shortcuts"), rect("Discord"));
+    let preferences = rect("Preferences");
     assert!(preferences.left() < 20.0, "Preferences {preferences:?} at the far end");
-    assert!(
-        preferences.right() <= theme.left() && theme.right() <= help.left() && help.right() <= discord.left(),
-        "Preferences, theme, shortcuts, Discord"
-    );
-    assert!(discord.right() < rect("Open").left(), "Discord stays clear of Open");
+    assert!(preferences.right() < rect("Open").left(), "Preferences stays clear of Open");
 }
 
 /// Mirrored, a tab dragged to the left moves later in the order, as it reads from the right.
@@ -892,7 +878,7 @@ fn narrow_tab_strips_accept_vertical_wheel_scrolling() {
         h.get_by(|n| n.role() == egui::accesskit::Role::Tab && n.label().as_deref() == Some("narrow-11.pdf")).click();
         h.run_steps(4);
         assert_eq!(h.state().active, Some(11));
-        assert!(h.get_by_label_contains("Display theme:").rect().right() <= width);
+        assert!(h.get_by_label("Preferences").rect().right() <= width);
         if let Ok(dir) = std::env::var("PDFCRAFT_TAB_SHOTS") {
             let _gpu = crate::gpu();
             crate::support::settle(&mut h);

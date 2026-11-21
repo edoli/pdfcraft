@@ -29,12 +29,6 @@ fn assert_theme(h: &Harness<'static, PdfCraftApp>, preference: ThemePreference, 
     }
 }
 
-/// A click on the title bar's theme button cycles Light, Dark, System.
-fn click_toolbar(h: &mut Harness<'static, PdfCraftApp>, label: &str) {
-    h.get_by_label(&format!("Display theme: {label}")).click();
-    h.run_steps(3);
-}
-
 fn open_view_menu(h: &mut Harness<'static, PdfCraftApp>) {
     crate::support::open_menu(h, "View");
     assert!(h.query_by_label("Switch light / dark theme").is_none());
@@ -64,23 +58,15 @@ fn a_fresh_install_follows_the_system_theme() {
 }
 
 #[test]
-fn toolbar_and_view_menu_share_three_state_preferences() {
+fn view_menu_applies_all_three_theme_preferences() {
     let mut h = harness();
-    // Fresh, on a dark desktop: System, shown dark. One click on, explicit light wins even on a
-    // dark desktop, including egui's popup style.
-    assert_theme(&h, ThemePreference::System, ThemeKind::Dark);
-    click_toolbar(&mut h, "Use system setting");
-    assert_theme(&h, ThemePreference::Light, ThemeKind::Light);
-    click_toolbar(&mut h, "Light gray");
-    assert_theme(&h, ThemePreference::Dark, ThemeKind::Dark);
-    click_toolbar(&mut h, "Dark gray");
-    assert_theme(&h, ThemePreference::System, ThemeKind::Dark);
-
     open_view_menu(&mut h);
     h.get_by_label("Light gray").click();
     h.run_steps(3);
     assert_theme(&h, ThemePreference::Light, ThemeKind::Light);
-    click_toolbar(&mut h, "Light gray");
+    open_view_menu(&mut h);
+    h.get_by_label("Dark gray").click();
+    h.run_steps(3);
     assert_theme(&h, ThemePreference::Dark, ThemeKind::Dark);
 
     open_view_menu(&mut h);
@@ -90,8 +76,9 @@ fn toolbar_and_view_menu_share_three_state_preferences() {
     h.input_mut().system_theme = Some(egui::Theme::Light);
     h.run_steps(3);
     assert_theme(&h, ThemePreference::System, ThemeKind::Light);
-    click_toolbar(&mut h, "Use system setting");
-    click_toolbar(&mut h, "Light gray");
+    open_view_menu(&mut h);
+    h.get_by_label("Dark gray").click();
+    h.run_steps(3);
     // A manual choice exits system mode and survives subsequent OS changes.
     h.input_mut().system_theme = Some(egui::Theme::Dark);
     h.run_steps(2);
@@ -234,9 +221,7 @@ fn preferences_theme_cards_and_use_system_setting_stay_in_sync() {
         combo.value().unwrap_or_default()
     }
     let mut h = harness();
-    h.get_by_label("Display theme: Use system setting").click_secondary();
-    h.run_steps(4);
-    h.get_by_label("Appearance settings…").click();
+    h.get_by_label("Preferences").click();
     h.run_steps(10);
     // A fresh install follows the OS (#1248), which is dark here.
     assert_theme(&h, ThemePreference::System, ThemeKind::Dark);
