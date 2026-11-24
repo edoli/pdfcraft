@@ -1,0 +1,49 @@
+name: Release Draft
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+    branches: [main, release]
+
+permissions: {}
+
+jobs:
+  draft:
+    name: Draft release from successful builds
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'failure' &&
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       (github.event.workflow_run.event == 'workflow_dispatch' ||
+        (github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'release')))
+    concurrency:
+      group: release-draft
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Create release draft
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_RUN_ID: ${{ github.event.workflow_run.id }}
+          RELEASE_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+        run: |
+          $draftArguments = @{ Repository = $env:GITHUB_REPOSITORY; SkipExisting = $true }
+          if ($env:GITHUB_EVENT_NAME -eq 'workflow_run') {
+            $draftArguments.RunId = $env:RELEASE_RUN_ID
+            $draftArguments.RunAttempt = $env:RELEASE_RUN_ATTEMPT
+          }
+          ./packaging/create-release-draft.ps1 @draftArguments
