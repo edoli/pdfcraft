@@ -1,5 +1,4 @@
-//! Pinned tools on Home: pin tools, unpin tools, persistence across sessions,
-//! selection modal, and the sidebar pin toggle.
+//! Pinned tool settings, selection dialog, and sidebar controls.
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
@@ -82,39 +81,15 @@ fn persistence_round_trip_and_sanitization() {
 }
 
 #[test]
-fn home_shows_pinned_tools_section_and_placeholder() {
-    let mut h = harness(|_| {});
-    // When no tools are pinned, the placeholder message appears
-    h.get_by_label_contains("Pinned Tools");
-    h.get_by_label_contains("Pin your favorite tools here for quick access.");
-    h.get_by_label("Pin a tool…");
-
-    // Pin a tool and step forward
-    h.state_mut().pin_tool("redact");
-    h.run_steps(3);
-
-    // Placeholder is gone and Redact card is shown
-    assert!(h.query_by_label_contains("Pin your favorite tools here for quick access.").is_none());
-    assert!(h.query_all_by_label("Redact a PDF").count() >= 1);
-
-    // Unpin tool and verify placeholder returns
-    h.state_mut().unpin_tool("redact");
-    h.run_steps(3);
-    h.get_by_label_contains("Pin your favorite tools here for quick access.");
-}
-
-#[test]
-fn clicking_pinned_tool_card_selects_it() {
+fn a_pinned_tool_in_the_sidebar_can_still_be_selected() {
     let mut h = harness(|app| {
         app.pin_tool("redact");
     });
     h.run_steps(2);
 
-    // The Redact card is rendered and can be clicked to select the tool
-    let nodes: Vec<_> = h.query_all_by_label("Redact a PDF").collect();
-    assert!(!nodes.is_empty());
-    // Click the card
-    nodes.last().unwrap().click();
+    // The sidebar is the single entry point for the pinned tool while Home is active.
+    assert_eq!(h.query_all_by_label("Redact a PDF").count(), 1);
+    h.get_by_label("Redact a PDF").click();
     h.run_steps(3);
 
     // Redact tool panel is now active

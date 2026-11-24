@@ -668,7 +668,7 @@ fn a_late_startup_url_preserves_home_even_after_all_other_tabs_are_closed() {
         deliver_startup(&h, "late.pdf", fixture(1));
         h.run_steps(2);
         assert_eq!(h.state().active, None, "Home stays selected (closed tabs: {close})");
-        h.get_by_label_contains("Welcome to PdfCraft");
+        h.get_by_label_contains("Folders");
         h.get_by_label("late.pdf").click();
         h.run_steps(2);
         assert!(h.state().active.is_some());
@@ -790,7 +790,7 @@ fn unlocking_a_late_startup_url_keeps_it_in_the_background() {
 enum OpenedFrom {
     CommandLine,
     FileOpen,
-    StartPage,
+    OpenButton,
     Drop,
 }
 
@@ -828,7 +828,7 @@ fn type_through_input_method(h: &mut Harness<'static, PdfCraftApp>, text: &str) 
 #[test]
 fn the_open_password_can_be_typed_through_an_input_method_however_the_file_is_opened() {
     let bytes = encrypted_fixture();
-    for from in [OpenedFrom::CommandLine, OpenedFrom::FileOpen, OpenedFrom::StartPage, OpenedFrom::Drop] {
+    for from in [OpenedFrom::CommandLine, OpenedFrom::FileOpen, OpenedFrom::OpenButton, OpenedFrom::Drop] {
         let dir = scratch(&format!("password-{from:?}"));
         let file = dir.join("encrypted.pdf");
         std::fs::write(&file, &bytes).unwrap();
@@ -850,9 +850,9 @@ fn the_open_password_can_be_typed_through_an_input_method_however_the_file_is_op
                 h.state_mut().pick_override = Some(vec![path.clone()]);
                 assert!(h.state_mut().execute("file.open"));
             }
-            OpenedFrom::StartPage => {
+            OpenedFrom::OpenButton => {
                 h.state_mut().pick_override = Some(vec![path.clone()]);
-                h.get_by_label("Open file").click();
+                h.get_by_label("Open").click();
             }
             OpenedFrom::Drop => h.input_mut().dropped_files.push(std::sync::Arc::new(Dropped(file.clone(), bytes.clone()))),
         }
